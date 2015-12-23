@@ -20,6 +20,8 @@ package org.apache.samoa.learners.classifiers.trees;
  * #L%
  */
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,10 +43,12 @@ import org.apache.samoa.instances.InstancesHeader;
 import org.apache.samoa.learners.InstanceContentEvent;
 import org.apache.samoa.learners.InstancesContentEvent;
 import org.apache.samoa.learners.ResultContentEvent;
+import org.apache.samoa.learners.clusterers.ClustreamClustererAdapter;
 import org.apache.samoa.moa.classifiers.core.AttributeSplitSuggestion;
 import org.apache.samoa.moa.classifiers.core.driftdetection.ChangeDetector;
 import org.apache.samoa.moa.classifiers.core.splitcriteria.InfoGainSplitCriterion;
 import org.apache.samoa.moa.classifiers.core.splitcriteria.SplitCriterion;
+import org.apache.samoa.moa.core.SerializeUtils;
 import org.apache.samoa.topology.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,6 +101,9 @@ final class ModelAggregatorProcessor implements Processor {
   private final int gracePeriod;
   private final int parallelismHint;
   private final long timeOut;
+
+  private long instancesCount = 0;
+  private long sampleFrequency = 1000;
 
   // private constructor based on Builder pattern
   private ModelAggregatorProcessor(Builder builder) {
@@ -158,6 +165,19 @@ final class ModelAggregatorProcessor implements Processor {
         }
       }
       this.foundNodeSet = null;
+
+      // Serialize VHT model
+      instancesCount++;
+      if (instancesCount % this.sampleFrequency == 0) {
+        logger.info("Trained model using {} events", instancesCount); // getId());
+        String filePath = "./vht-model";
+        File file = new File(filePath);
+        try {
+          SerializeUtils.writeToFile(file, this.treeRoot);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
     } else if (event instanceof LocalResultContentEvent) {
       LocalResultContentEvent lrce = (LocalResultContentEvent) event;
       Long lrceSplitId = lrce.getSplitId();
